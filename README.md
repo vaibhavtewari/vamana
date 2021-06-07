@@ -13,7 +13,7 @@ https://dcc.ligo.org/LIGO-P2000434/public <br />
 https://www.gw-openscience.org/O3/O3a/ <br />
 plots: Folder containing saved figures <br />
 plotting_nb: Notebook to make plots <br />
-reference_distribution_nb: Folder containing notebooks the reference chirp mass distribution <br />
+reference_distribution_nb: Folder containing notebooks to obtain the reference chirp mass distribution <br />
 results: Posteriors samples for analysis <br />
 submit: Scripts to run independent copies of code for faster posterior collection 
 
