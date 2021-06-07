@@ -7,17 +7,17 @@ Numpy, Scipy, Seaborn, Pathos
 
 Folder Organisation
 ============================
-analysis: Define your new analysis here. Code contains two examples
-gw_data: Data obtained from the following sources
-https://dcc.ligo.org/LIGO-P2000434/public
-https://www.gw-openscience.org/O3/O3a/
-plots: Folder containing saved figures
-plotting_nb: Notebook to make plots
-reference_distribution_nb: Folder containing notebooks the reference chirp mass distribution
-results: Posteriors samples for analysis
-submit: Scripts to run independent copies of code for faster posterior collection
+analysis: Define your new analysis here. Code contains two examples <br />
+gw_data: Data obtained from the following sources <br />
+https://dcc.ligo.org/LIGO-P2000434/public <br />
+https://www.gw-openscience.org/O3/O3a/ <br />
+plots: Folder containing saved figures <br />
+plotting_nb: Notebook to make plots <br />
+reference_distribution_nb: Folder containing notebooks the reference chirp mass distribution <br />
+results: Posteriors samples for analysis <br />
+submit: Scripts to run independent copies of code for faster posterior collection 
 
 Other Files
 =============================
-debug.ipynb: Notebook to test an analysis
+debug.ipynb: Notebook to test an analysis <br />
 .py: Source files
