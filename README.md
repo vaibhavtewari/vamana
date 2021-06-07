@@ -21,3 +21,9 @@ Other Files
 =============================
 debug.ipynb: Notebook to test an analysis <br />
 .py: Source files
+
+To Submit
+=============================
+debug.ipynb can run a single thread run <br />
+For multiple threads do: python submit/relevant analysis(2 submit files are provided) <br />
+If files are already present in the "temp" folder instead of running the analysis code will combine these!
