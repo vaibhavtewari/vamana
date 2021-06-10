@@ -11,7 +11,7 @@ git clone https://github.com/vaibhavtewari/vamana.git
 
 Additional code requirements
 ============================
-Numpy, Scipy, Seaborn, Pathos
+Numpy, Scipy, Seaborn, h5py, Pathos
 
 Folder Organisation
 ============================
