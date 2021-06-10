@@ -1,3 +1,11 @@
+This code performs the population analysis of binary black holes using the gravitational 
+wave data. The methodology is described in the following publications <br />
+i) https://arxiv.org/abs/1712.00482 <br />
+ii) https://arxiv.org/abs/2006.15047 <br />
+iii) https://arxiv.org/abs/2012.08839 <br /><br />
+and the scientific results are described in the following publications <br />
+i) https://arxiv.org/abs/2011.04502
+
 This code is currently not packaged and need to be checked out <br />
 git clone https://github.com/vaibhavtewari/vamana.git
 
