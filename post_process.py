@@ -2,14 +2,17 @@ import glob
 import h5py
 import numpy as np
 from scipy.stats import norm, truncnorm
+import gnobs
 from models import *
 from conversions import *
 
 max_spin = 0.99
+z_max = 2.0
 
-def post_process_UinComov(args_sampler, args_ppd, hyperparams):
+def post_process(args_sampler, args_ppd, hyperparams):
     """ 
-    Returns posterior predictive for hyper-parameters
+    Returns posterior predictive for hyper-parameters and that has 
+    power-law redshift evolution
 
     Parameters
     ----------
@@ -23,20 +26,23 @@ def post_process_UinComov(args_sampler, args_ppd, hyperparams):
     """
     
     np.random.seed()
+    ngauss = args_sampler['ngauss']
     locs_mch = hyperparams['locs_mch']
     stds_mch = hyperparams['stds_mch']
     locs_sz = hyperparams['locs_sz']
     stds_sz = hyperparams['stds_sz']
     min_q = hyperparams['min_q']
     alphas_q = hyperparams['alphas_q']
+    kappa = hyperparams['kappa']
     gwts = hyperparams['gwts']
     rate = hyperparams['rate']
+    if np.isscalar(kappa):
+        kappa = np.array([kappa] * ngauss)
     
     mass_ax = args_ppd['mass_ax']
     q_ax = args_ppd['q_ax']
     sz_ax = args_ppd['sz_ax']
     mch_ax = args_ppd['mch_ax']
-    ngauss = len(locs_mch)
     rndn = np.random.randint(ngauss)
     nppd = args_ppd['nppd_per_posterior'] * gwts * 1.1
     nppd = (nppd + 0.5).astype(int)
@@ -46,7 +52,7 @@ def post_process_UinComov(args_sampler, args_ppd, hyperparams):
     mch_ax_flat, q_ax_flat = m1m2_to_mchq(mass_xy_flat, mass_yx_flat)
     J = J_mchq_to_m1m2(mch_ax_flat, q_ax_flat)
     
-    ppd_mch, ppd_q, ppd_s1z, ppd_s2z = [], [], [], []
+    ppd_mch, ppd_q, ppd_s1z, ppd_s2z, ppd_z = [], [], [], [], []
     post_pdf_mch, post_pdf_sz, post_pdf_q, post_pdf_mchq = 0, 0, 0, 0
     for jj in range(ngauss):
         rvs = norm(loc = locs_mch[jj], scale = stds_mch[jj])
@@ -63,6 +69,7 @@ def post_process_UinComov(args_sampler, args_ppd, hyperparams):
         ppd_q = np.append(ppd_q, powerlaw_samples(min_q[jj], 1., alphas_q[jj], nppd[jj]))
         post_pdf_q += powerlaw_pdf(q_ax, min_q[jj], 1., alphas_q[jj]) * gwts[jj]
         ppd_chieff = (ppd_s1z + ppd_q * ppd_s2z) / (1 + ppd_q)
+        ppd_z = np.append(ppd_z, gnobs.astro_redshifts(sfr_1pz, nsamples = nppd[jj], z_max = z_max, kappa = kappa[jj]))
             
     post_pdf_m1m2 = J * post_pdf_mchq
         
@@ -81,6 +88,7 @@ def post_process_UinComov(args_sampler, args_ppd, hyperparams):
     bound += np.sign(max_spin - np.abs(ppd_s1z))
     bound += np.sign(max_spin - np.abs(ppd_s2z))
     idxsel = np.where(bound == 3)
+    np.random.shuffle(idxsel[0])
     
     posterior = {}
     posterior['ppd_mch'] = ppd_mch[idxsel][:args_ppd['nppd_per_posterior']]
@@ -88,6 +96,7 @@ def post_process_UinComov(args_sampler, args_ppd, hyperparams):
     posterior['ppd_s1z'] = ppd_s1z[idxsel][:args_ppd['nppd_per_posterior']]
     posterior['ppd_s2z'] = ppd_s2z[idxsel][:args_ppd['nppd_per_posterior']]
     posterior['ppd_q'] = ppd_q[idxsel][:args_ppd['nppd_per_posterior']]
+    posterior['ppd_z'] = ppd_z[idxsel][:args_ppd['nppd_per_posterior']]
     
     posterior['post_pdf_mch'] = post_pdf_mch
     posterior['post_pdf_mass'] = 0.5 * np.array(post_pdf_mass)
@@ -98,7 +107,7 @@ def post_process_UinComov(args_sampler, args_ppd, hyperparams):
     
     return posterior
 
-def gather_files(outfile, args_sampler, args_ppd):
+def gather_files(outfile, analysis_name, args_sampler, args_ppd, post_files):
     """ 
     Combines posteriors(saved in individual files) into one
 
@@ -107,17 +116,14 @@ def gather_files(outfile, args_sampler, args_ppd):
     outfile: File name to save combined results
     args_sampler: Read from the analysis file
     args_ppd: Read from the analysis file
+    post_files: Posterior files
     """
-    
-    posterior_dir = args_ppd['output'] + '*.hdf5'
-    post_files = np.sort(glob.glob(posterior_dir))
+
     posterior, ppd = {}, {}
     for kk, ff in enumerate(post_files):
         with h5py.File(ff, 'r') as filedata:
         
             for key in filedata['posteriors'].keys():
-                if key == 'zsegidx':
-                    continue
                 if key == 'log_lkl' or key == 'rate' or key == 'margl':
                     if kk == 0:
                         posterior[key] = filedata['posteriors'][key][()]
@@ -143,9 +149,6 @@ def gather_files(outfile, args_sampler, args_ppd):
                 group.create_dataset(key, data = args_sampler[key])
             except:
                 pass
-        data = args_sampler['data']
-        nobs = sum(len(data[obsrun]['breaks']) - 1 for obsrun in data.keys())
-        group.create_dataset('nobs', data = nobs)
         group = out.create_group('args_ppd')
         for key in args_ppd.keys():
             try:
@@ -158,3 +161,23 @@ def gather_files(outfile, args_sampler, args_ppd):
         group = out.create_group('ppd')
         for key in ppd.keys():
             group.create_dataset(key, data = ppd[key])
+            
+def get_DiffRate_intervals(pdfs, rates):
+    """ 
+    Combines rate and density measurement to return credible 
+    intervals for differnetial rate
+
+    Parameters
+    ----------
+    pdfs: Posterior density
+    rate: Merger rate
+    """
+    
+    dRd = rates * np.array(pdfs).T
+    p5 = np.percentile(dRd, 5., axis = 1)
+    p25 = np.percentile(dRd, 25., axis = 1)
+    p50 = np.percentile(dRd, 50., axis = 1)
+    p75 = np.percentile(dRd, 75., axis = 1)
+    p95 = np.percentile(dRd, 95., axis = 1)
+    
+    return p5, p25, p50, p75, p95

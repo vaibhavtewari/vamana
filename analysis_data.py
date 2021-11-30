@@ -1,5 +1,6 @@
 import numpy as np
 import models, gnobs
+from conversions import *
 
 def reweight_data_to_UinComov(pe, inj):
     """ 
@@ -61,12 +62,12 @@ def get_data_for_fitting(pe, inj):
         for key in pe[obsrun].keys():
             mch, q = pe[obsrun][key]['mchirp_src'], pe[obsrun][key]['q']
             s1z, s2z = pe[obsrun][key]['spin1z'], pe[obsrun][key]['spin2z']
-            mchirp.extend(mch)
-            spin1z.extend(s1z)
-            spin2z.extend(s2z)
+            mchirp = np.append(mchirp, mch)
+            spin1z = np.append(spin1z, s1z)
+            spin2z = np.append(spin2z, s2z)
             breakat += len(mch)
             breaks.append(breakat)
-            redshifts.extend(pe[obsrun][key]['redshift'])
+            redshifts = np.append(redshifts, pe[obsrun][key]['redshift'])
         
             qarr.extend(pe[obsrun][key]['q'])
             pe_prior_pdf.extend(pe[obsrun][key]['prior_pdf'])
@@ -75,9 +76,12 @@ def get_data_for_fitting(pe, inj):
         obsrun_data['parametric_data'] = np.transpose([mchirp, spin1z, spin2z])
         obsrun_data['logq'] = np.log(qarr)
         obsrun_data['q'] = np.array(qarr)
-        obsrun_data['pe_prior_pdf'] = np.array(pe_prior_pdf)
         obsrun_data['breaks'] = breaks
-        obsrun_data['redshifts'] = np.array(redshifts)
+        #obsrun_data['redshifts'] = np.array(redshifts)
+        obsrun_data['log1pz'] = np.log1p(redshifts)
+        # Following is independent of analysis thus combining for faster computation
+        obsrun_data['analysis_independent'] = z_to_dcovdz(redshifts) / (1 + redshifts)
+        obsrun_data['analysis_independent'] /= np.array(pe_prior_pdf)
         
         data[obsrun] = obsrun_data
         
@@ -85,7 +89,11 @@ def get_data_for_fitting(pe, inj):
         mch_rec = injections[obsrun]['mch_rec']
         s1z_rec = injections[obsrun]['s1z_rec']
         s2z_rec = injections[obsrun]['s2z_rec']
+        z_rec = injections[obsrun]['z_rec']
         var_rec = np.transpose(np.array([mch_rec, s1z_rec, s2z_rec]))
         injections[obsrun]['var_rec'] = var_rec
+        injections[obsrun]['log1pz'] = np.log1p(z_rec)
+        injections[obsrun]['analysis_independent'] = z_to_dcovdz(z_rec) / (1 + z_rec)
+        injections[obsrun]['analysis_independent'] /= injections[obsrun]['rec_pdf']
         
     return data, injections

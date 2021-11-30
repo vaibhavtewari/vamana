@@ -1,0 +1,15 @@
+universe = vanilla
+executable = #Path to python executable
+arguments = script.py $(Process)
+
+output = logs/script.$(Process).out
+error = logs/scrip.$(Process).err
+log = logs/script.$(Process).log
+
+should_transfer_files = YES
+transfer_executable = False
+transfer_input_files = analysis, gw_data, analysis_data.py, conversions.py, script.py, functions.py, gnobs.py, likelihoods_vts_smoothing.py, models.py, post_process.py, proposals.py, read_pe_samples.py
+transfer_output_files = temp
+when_to_transfer_output = ON_EXIT_OR_EVICT
+
+queue 25

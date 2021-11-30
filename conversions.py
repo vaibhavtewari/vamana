@@ -94,15 +94,16 @@ def J_m1m2_to_mchq(mass1, mass2):
     ''' 
     
     mchirp, q = m1m2_to_mchq(mass1, mass2)
-    J = mchirp * (1/q) * ((1 + q) * (1 + 1/q)) ** 0.2
+    J = mchirp / mass1 ** 2
     
-    return J
+    return 1/J
 
 def J_mchq_to_m1m2(mchirp, q):
     '''
     Get Jacobian to transfrom from mchirp, q -> mass1,mass2
     ''' 
     
-    J = mchirp * ((1.+ q) / q**3.) ** (2./5)
+    mass1, mass2 = qmch_to_m1m2(mchirp, q)
+    J = mchirp / mass1 ** 2
     
-    return 1/J
+    return J

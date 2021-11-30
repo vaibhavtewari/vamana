@@ -1,4 +1,4 @@
-import os, glob, copy, h5py
+import os, sys, copy, h5py
 
 import numpy as np
 import scipy.stats as ss
@@ -58,28 +58,24 @@ def function_gauss(data_analysis):
     hyperparams = analysis.initialise_hyperparams(args_sampler)
     filenum, nsampled_eff = 0, 0
     margl = []
+    fname_prefix = sys.argv[-1] + '_' + analysis.__name__ + '_'
 
     while stp < args_ppd['niter']:
 
         itr += 1
-        prp_hyperparams, mhr, AD_mch = \
+        prp_hyperparams, mhr = \
                 analysis.get_hyperparams_proposal(args_sampler, hyperparams)
-        bound = np.sign(AD_mch - args_sampler['AD_thr_mch'])
-        if bound < 1:
-            continue
 
         logsum_sumprob = analysis.loglikelihood(args_sampler, prp_hyperparams)
         ratio = np.exp(logsum_sumprob - log_lkl)
         ratio *= mhr
         logmhr = np.log(mhr) + logsum_sumprob
-        if not np.isnan(logmhr):
-            sum_log_lkl = np.logaddexp(sum_log_lkl, logmhr)
-            nsampled_eff += mhr
+        sum_log_lkl = np.logaddexp(sum_log_lkl, logmhr)
+        nsampled_eff += mhr
         
         rndn = np.random.random()
         if ratio > rndn:
 
-            stp += 1
             log_lkl = logsum_sumprob
             maxlkl = max(maxlkl, log_lkl)
             avg_log_lkl = sum_log_lkl - np.log(nsampled_eff)
@@ -93,9 +89,8 @@ def function_gauss(data_analysis):
             #gwts = hyperparams['gwts']
             rate = hyperparams['rate']
             hyperparams['log_lkl'] = logsum_sumprob
-            print (itr, stp, np.round(log_lkl, 1), np.round(maxlkl, 2), \
-                   np.round(AD_mch, 3), np.round(rate, 2))
-            #print (np.round(hyperparams['paramz'], 2).flatten())
+            #print (itr, stp, np.round(log_lkl, 1), np.round(maxlkl, 2), np.round(rate, 2))
+            #print (np.round(hyperparams['kappa'], 2).flatten())
             #print (np.round(locs_mch, 2), '--locs_mch')
             #print (np.round(stds_mch, 2), '--stds_mch')
             #print (np.round(min_q, 3), '--minq')
@@ -105,22 +100,14 @@ def function_gauss(data_analysis):
             #print (np.round(gwts, 4))
             #print ()
             
-            if stp >= args_ppd['nstart'] and stp % args_ppd['nstride'] == 1:
+            if stp >= args_ppd['nstart'] and stp % args_ppd['nstride'] == 0:
                 
                 hyperparams['margl'] = logsumexp(margl[-args_ppd['nstride']:])
                 hyperparams['margl'] -= np.log(args_ppd['nstride'])
                 margl = []
-                if filenum == 0:
-                    exist = True
-                    while exist:
-                        filenum += 1
-                        fname = args_ppd['output'] + '/' + str(filenum) 
-                        fname += '_' + str(stp) + '_' + str(itr) + '.hdf5'
-                        exist = os.path.exists(fname)
-            
-                ppd = analysis.postprocess(args_sampler, args_ppd, hyperparams)
-                fname = args_ppd['output'] + '/' + str(filenum) + '_' 
+                fname = args_ppd['output'] + '/' + fname_prefix
                 fname += str(stp) + '_' + str(itr) + '.hdf5'
+                ppd = analysis.postprocess(args_sampler, args_ppd, hyperparams)
                 with h5py.File(fname, 'w') as out:
                     group = out.create_group('posteriors')
                     for key in hyperparams.keys():
@@ -138,6 +125,7 @@ def function_gauss(data_analysis):
                             group.create_dataset(key, data = ppd[key], dtype='float32')
                         else:
                             group.create_dataset(key, data = ppd[key])
+            stp += 1
 
     return True
 
@@ -177,28 +165,6 @@ def gauss_proposal(x, loc, scale, dcdf):
         
     return np.random.uniform(x_left, x_right), x_right - x_left
 
-def powerlaw_proposal(x, minx, maxx, alpha, dcdf):
-    """ 
-    Make proposals for a uniform prior with support range sensitive to 
-            the denity of a powerlaw (eq. 7 in arXiv:2006.15047)
-    x: Current position
-    minxx, maxx: Edges of the powerlaw
-    alpha: slope of the powerlaw
-    dcdf: Change in cumulative density over the support range
-    
-    Returns
-    -------
-    The next proposal, inverse of jump probability
-    """
-
-    cdf_now = powerlaw_cdf(x, minx, maxx, alpha)
-    cdf_left  = max(cdf_now - dcdf, 0.)
-    cdf_right = min(cdf_now + dcdf, 1.0)
-    x_left = powerlaw_invcdf(cdf_left, minx, maxx, alpha)
-    x_right = powerlaw_invcdf(cdf_right, minx, maxx, alpha)
-        
-    return np.random.uniform(x_left, x_right), x_right - x_left
-
 def get_vt_and_error_parametric_o3(injections, mchpl_range, alpha_mch, \
                                    qmin, alpha_q, locs_sz, scales_sz):
     """ 
@@ -233,6 +199,35 @@ def get_vt_and_error_parametric_o3(injections, mchpl_range, alpha_mch, \
 
     return VT * sumw, np.sqrt(np.sum(w ** 2)) / sumw
 
+def get_vt_and_error_parametric_sfr_1pz(sfr_model, injections, mchpl_range, \
+                        alpha_mch, qmin, alpha_q, locs_sz, scales_sz, kappa):
+    
+    z_max = injections['z_max']
+    dNdz = gnobs.get_sfr_pdf(sfr_1pz, injections['z_rec'], z_max = z_max, \
+                             kappa = kappa, normalise = False)
+    dNdz *= injections['analysis_time_yr']
+    dNdz /= 1e9
+    
+    ngauss_sz = len(locs_sz)
+    mch_rec, q_rec = injections['mch_rec'], injections['q_rec']
+    s1z_rec, s2z_rec = injections['s1z_rec'], injections['s2z_rec']
+    ndraw = injections['ndraw']
+    rec_pdf = injections['rec_pdf']
+    
+    prob_mch = broken_powerlaw_pdf(mch_rec, mchpl_range, alpha_mch)
+    prob_q = powerlaw_pdf(q_rec, qmin, 1.0, alpha_q)
+    prob_s1z = prob_s2z = 0
+    for jj in range(ngauss_sz):
+        prob_s1z += norm.pdf(s1z_rec, loc = locs_sz[jj], scale = scales_sz[jj])
+        prob_s2z += norm.pdf(s2z_rec, loc = locs_sz[jj], scale = scales_sz[jj])
+    prob_s1z /= ngauss_sz
+    prob_s2z /= ngauss_sz
+    pout = prob_mch * prob_q * prob_s1z * prob_s2z
+    w = dNdz * pout / rec_pdf / ndraw
+    vts = np.sum(w)
+    
+    return vts 
+
 def read_results(fin):
     """ 
     Read a result file
@@ -264,12 +259,11 @@ def read_results(fin):
 
     return run_data
 
-def read_injections_o3(fin, IFAR_THR, spin_orientation):
+def read_injections_o3(fin, IFAR_THR):
     """ 
     Read an injection file performed over an observation runs
     fin: The path to the file
     IFAR_THR: The threshold for injections flagged as observed
-    spin_orientation: Spin model used by injections(aligned/precessing)
     
     Returns
     -------
@@ -280,21 +274,13 @@ def read_injections_o3(fin, IFAR_THR, spin_orientation):
     with h5py.File(fin, 'r') as inp:
         
         secs_in_year = 365.25 * 86400
-        try:
-            injections['z_max'] = inp.attrs['max_redshift']
-            injections['analysis_time_yr'] = inp.attrs['analysis_time_s']
-            injections['analysis_time_yr'] /= secs_in_year
-            injections['ndraw'] = inp.attrs['n_rejected'] + inp.attrs['n_accepted']
-            injections['surveyed_VT'] = inp.attrs['N_exp/R(z=0)']
-            max_spin1 = 0.999
-        except:
-            injections['z_max'] = inp['injections'].attrs['max_redshift']
-            injections['analysis_time_yr'] = inp['injections'].attrs['analysis_time_s']
-            injections['analysis_time_yr'] /= secs_in_year
-            injections['ndraw'] = inp['injections'].attrs['n_rejected'] 
-            injections['ndraw'] += inp['injections'].attrs['n_accepted']
-            injections['surveyed_VT'] = inp['injections'].attrs['N_exp/R(z=0)']   
-            max_spin1 = inp['injections'].attrs['max_spin1']
+        injections['z_max'] = inp['injections'].attrs['max_redshift']
+        injections['analysis_time_yr'] = inp['injections'].attrs['analysis_time_s']
+        injections['analysis_time_yr'] /= secs_in_year
+        injections['ndraw'] = inp['injections'].attrs['n_rejected'] 
+        injections['ndraw'] += inp['injections'].attrs['n_accepted']
+        injections['surveyed_VT'] = inp['injections'].attrs['N_exp/R(z=0)']   
+        max_spin1 = inp['injections'].attrs['max_spin1']
         
         max_IFAR = 0
         for key in inp['injections'].keys():
@@ -308,18 +294,14 @@ def read_injections_o3(fin, IFAR_THR, spin_orientation):
         s2z_rec = inp['injections']['spin2z'][()][idxsel]
         z_rec = inp['injections']['redshift'][()][idxsel]
         
-        if spin_orientation == 'aligned':
-            rec_pdf = inp['injections']['sampling_pdf'][()][idxsel]
-        elif spin_orientation == 'precessing':
-            key = 'mass1_source_mass2_source_sampling_pdf'
-            pm1m2 = inp['injections'][key][()][idxsel]
-            pz = inp['injections']['redshift_sampling_pdf'][()][idxsel]
-            #Aligned spin pdf in precessing injections
-            ps1z = (np.log(max_spin1) - np.log(np.abs(s1z_rec))) / 2 / max_spin1
-            ps2z = (np.log(max_spin1) - np.log(np.abs(s2z_rec))) / 2 / max_spin1
-            rec_pdf = pm1m2 * pz * ps1z * ps2z
-        else:
-            print ('No spin orientation provided!')
+        key = 'mass1_source_mass2_source_sampling_pdf'
+        pm1m2 = inp['injections'][key][()][idxsel]
+        pz = inp['injections']['redshift_sampling_pdf'][()][idxsel]
+        #Aligned spin pdf in precessing injections
+        ps1z = (np.log(max_spin1) - np.log(np.abs(s1z_rec))) / 2 / max_spin1
+        ps2z = (np.log(max_spin1) - np.log(np.abs(s2z_rec))) / 2 / max_spin1
+        rec_pdf = pm1m2 * pz * ps1z * ps2z
+
         rec_pdf *= J_m1m2_to_mchq(m1_rec, m2_rec)
         
         mch_rec, q_rec = m1m2_to_mchq(m1_rec, m2_rec)
@@ -367,6 +349,62 @@ def read_injections_o1o2(fin):
         injections['logq_rec'] = np.log(q_rec)
         injections['z_rec'] = z_rec
         injections['rec_pdf'] = rec_pdf
+        
+    return injections
+
+def read_injections_o1o2_rnp(fin, DETSNR_THR, NETSNR_THR):
+    """ 
+    Read an injection file performed over an observation runs
+    fin: The path to the file
+    DETSNR_THR: The detector SNR threshold for injections flagged as observed
+    NETSNR_THR: The network SNR threshold for injections flagged as observed
+    
+    Returns
+    -------
+    Dictionary containing the injections
+    """
+    
+    injections = {}
+    with h5py.File(fin, 'r') as inp:
+        
+        secs_in_year = 365.25 * 86400
+        injections['analysis_time_yr'] = inp.attrs['total_analysis_time']
+        injections['analysis_time_yr'] /= secs_in_year
+        injections['ndraw'] = inp.attrs['total_generated']
+        max_spin = 0.99
+        
+        min_DETSNR = 1e5
+        for key in ['snr_H', 'snr_L']:
+            min_DETSNR = np.minimum(inp['events'][key], min_DETSNR)
+        NETSNR = inp['events']['snr_net']
+        idxsel = np.where((min_DETSNR > DETSNR_THR) & (NETSNR > NETSNR_THR))
+            
+        m1_rec = inp['events']['mass1_source'][idxsel]
+        m2_rec = inp['events']['mass2_source'][idxsel]
+        s1z_rec = inp['events']['spin1z'][idxsel]
+        s2z_rec = inp['events']['spin2z'][idxsel]
+        z_rec = inp['events']['Mc'][idxsel] / inp['events']['Mc_source'][idxsel] - 1
+        
+        pz = inp['events']['logpdraw_z'][idxsel]
+        key = 'logpdraw_mass1_source_GIVEN_z'
+        pm1 = inp['events'][key][idxsel]
+        key = 'logpdraw_mass2_source_GIVEN_mass1_source'
+        pm2 = inp['events'][key][idxsel]
+        #Aligned spin pdf in precessing injections
+        ps1z = (np.log(max_spin) - np.log(np.abs(s1z_rec))) / 2 / max_spin
+        ps2z = (np.log(max_spin) - np.log(np.abs(s2z_rec))) / 2 / max_spin
+        rec_pdf = np.exp(pm1 + pm2 + pz) * ps1z * ps2z
+        rec_pdf *= J_m1m2_to_mchq(m1_rec, m2_rec)
+        
+        mch_rec, q_rec = m1m2_to_mchq(m1_rec, m2_rec)
+        injections['mch_rec'] = mch_rec
+        injections['s1z_rec'] = s1z_rec
+        injections['s2z_rec'] = s2z_rec
+        injections['q_rec'] = q_rec
+        injections['logq_rec'] = np.log(q_rec)
+        injections['z_rec'] = z_rec
+        injections['rec_pdf'] = rec_pdf
+        injections['z_max'] = np.max(z_rec)
         
     return injections
 

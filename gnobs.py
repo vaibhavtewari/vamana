@@ -16,9 +16,10 @@ def get_sfr_pdf(sfr_model, zs, **kwargs):
     """
     
     z_max = kwargs.get('z_max')
-    normalise = kwargs.get('normalise')
+    normalise = kwargs.get('normalise', True)
     dNdz = z_to_dcovdz(zs) * sfr_model(zs, **kwargs) / (1 + zs)
     if normalise:
+        dNdz[zs > z_max] = 0
         norm_sfr = get_dNdz_norm(sfr_model, **kwargs)
         return dNdz / norm_sfr
     

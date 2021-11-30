@@ -232,32 +232,25 @@ def sfr_madau_dickinson(zs, **kwargs):
     
     zs = np.array(zs)
     pdf = (1 + zs) ** alphaz / ( 1 + ((1. + zs)/(1. + zp))**(alphaz + betaz) )
-    pdf[zs > z_max] = 0
     
     return pdf
 
-def sfr_1plusz_pow(zs, **kwargs):
+def sfr_1pz(zs, **kwargs):
     ''' This is not normalized '''  
     
     z_max = kwargs.get('z_max')
     kappa = kwargs.get('kappa')
-    normalise = kwargs.get('normalise')
     
     zs = np.array(zs)
     pdf = (1 + zs) ** kappa
-    if normalise:
-        pdf[zs > z_max] = 0
     
     return pdf
 
-def UinComov(zs, **kwargs):
-    ''' Return a unity array if no star formation model is given
+def UinComov(zs):
+    ''' Return a unity array as zs
     '''
     
-    z_max = kwargs.get('z_max')
-    
     pdf = np.ones_like(zs)
-    pdf[zs > z_max] = 0
     
     return pdf
 

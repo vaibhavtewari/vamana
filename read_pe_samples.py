@@ -3,7 +3,7 @@ import numpy as np
 
 from conversions import *
 
-def read_pesamples(pe_dir, nsel = 25000):
+def read_pesamples(pe_dir, ifar_thr, nsel = 25000):
 
     pe_files = np.sort(glob.glob(pe_dir))
     pe, i = {}, 0
@@ -12,6 +12,9 @@ def read_pesamples(pe_dir, nsel = 25000):
         with h5py.File(ff, 'r') as bulk:
             
             super_event = ff.rsplit("/")[-1][:-5]
+            ifar = [int(s) for s in super_event.split('_') if s.isdigit()][-1]
+            if ifar < ifar_thr:
+                continue
             pe[super_event] = {}
             
             parameters = bulk.keys()
@@ -51,18 +54,19 @@ def read_pesamples(pe_dir, nsel = 25000):
                     pe[super_event]['lumd'] = bulk[key][:]
                 except:
                     pass
-            prior_pdf = get_pe_weights(pe[super_event]['mass1'], pe[super_event]['mass2'],\
+            prior_pdf = get_pe_weights(pe[super_event]['mass1_src'], pe[super_event]['mass2_src'],\
                  pe[super_event]['spin1z'], pe[super_event]['spin2z'], pe[super_event]['lumd'], 'precessing')
             mchirp_src, q = m1m2_to_mchq(pe[super_event]['mass1_src'], pe[super_event]['mass2_src'])
             pe[super_event]['mchirp_src'] = mchirp_src
             pe[super_event]['q'] = q
             pe[super_event]['prior_pdf'] = prior_pdf
             pe[super_event]['redshift'] = dlum_to_z(pe[super_event]['lumd'])
-
+            
             idxsel = np.arange(nsel)
             np.random.shuffle(idxsel)
             for key in pe[super_event].keys():
                 pe[super_event][key] = pe[super_event][key][idxsel]
+
     
     return pe
 
@@ -85,10 +89,8 @@ def get_pe_weights(mass1, mass2,  spin1z, spin2z, lumd, orientation):
     psrc *= get_dLdz(z) #L to z
     prior_pdf *= psrc
     
-    #change from m1-m2 to mch-q
-    DJ = J_m1m2_to_mchq(mass1, mass2)
-    prior_pdf *= DJ
-    
-    prior_pdf /= np.sum(prior_pdf)
+    #change from m1-m2 to mch-q in source frame
+    J = J_m1m2_to_mchq(mass1, mass2)
+    prior_pdf *= J
      
     return prior_pdf

@@ -5,33 +5,28 @@ ii) https://arxiv.org/abs/2006.15047 <br />
 iii) https://arxiv.org/abs/2012.08839 <br /><br />
 and the scientific results are described in the following publications <br />
 i) https://arxiv.org/abs/2011.04502
+ii) https://arxiv.org/abs/2111.13991
 
 This code is currently not packaged and need to be checked out <br />
-git clone https://github.com/vaibhavtewari/vamana.git
+git clone --depth=1 https://github.com/vaibhavtewari/vamana.git
 
 Additional code requirements
 ============================
-Numpy, Scipy, Seaborn, h5py, Pathos
+Numpy, Scipy, Seaborn, h5py
 
 Folder Organisation
 ============================
-analysis: Define your new analysis here. Code contains two examples <br />
-gw_data: Data obtained from the following sources <br />
-https://dcc.ligo.org/LIGO-P2000434/public <br />
+analysis: Define your new analysis here. Import functions that read data, calculate likelihood, and post-process. Also define the range on priors. Initialise hyper-parameters and define the proposal scheme. <br />
+gw_data: Data products obtained from the following sources <br />
 https://www.gw-openscience.org/O3/O3a/ <br />
+https://zenodo.org/record/5636816#.YaK0M_HP3uU <br />
 plots: Folder containing saved figures <br />
 plotting_nb: Notebook to make plots <br />
-reference_distribution_nb: Folder containing notebooks to obtain the reference chirp mass distribution <br />
-results: Posteriors samples for analysis <br />
-submit: Scripts to run independent copies of code for faster posterior collection 
+results: Files saving posteriors samples and posterior predictives for analysis <br />
 
 Other Files
 =============================
-debug.ipynb: Notebook to test an analysis <br />
-.py: Source files
-
-To Submit
-=============================
-debug.ipynb can run a single thread run <br />
-For multiple threads do: python submit/relevant analysis(2 submit files are provided) <br />
-If files are already present in the "temp" folder instead of running the analysis code will combine these!
+script.py: Import data, import analysis in this file. python execution runs the analysis on a dingle CPU. Alternatively, if files are already present in the "temp" folder running script.py will combine those files <br />
+other .py files: Source files
+local_multicpu.py: Execute multiple independent copies of script.py for faster posterior collection (using CPUs on the local machine)
+condor.sub: Submit the analysis on compute nodes using condor (condor_submit condor.sub). 
