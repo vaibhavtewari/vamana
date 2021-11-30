@@ -4,7 +4,7 @@ i) https://arxiv.org/abs/1712.00482 <br />
 ii) https://arxiv.org/abs/2006.15047 <br />
 iii) https://arxiv.org/abs/2012.08839 <br /><br />
 and the scientific results are described in the following publications <br />
-i) https://arxiv.org/abs/2011.04502
+i) https://arxiv.org/abs/2011.04502 <br />
 ii) https://arxiv.org/abs/2111.13991
 
 This code is currently not packaged and need to be checked out <br />
@@ -27,6 +27,6 @@ results: Files saving posteriors samples and posterior predictives for analysis 
 Other Files
 =============================
 script.py: Import data, import analysis in this file. python execution runs the analysis on a dingle CPU. Alternatively, if files are already present in the "temp" folder running script.py will combine those files <br />
-other .py files: Source files
-local_multicpu.py: Execute multiple independent copies of script.py for faster posterior collection (using CPUs on the local machine)
+other .py files: Source files <br />
+local_multicpu.py: Execute multiple independent copies of script.py for faster posterior collection (using CPUs on the local machine) <br />
 condor.sub: Submit the analysis on compute nodes using condor (condor_submit condor.sub). 
