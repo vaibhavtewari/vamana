@@ -16,7 +16,7 @@ Numpy, Scipy, Seaborn, h5py
 
 Folder Organisation
 ============================
-analysis: Define your new analysis here. Import functions that read data, calculate likelihood, and post-process. Also define the range on priors. Initialise hyper-parameters and define the proposal scheme. <br />
+analysis: Define your new analysis here and create a new analysis file. Import functions that read data, calculate likelihood, and post-process. Also define the range on priors. Initialise hyper-parameters and define the proposal scheme. Currently only likelihood function that models the merger rate evolution as power-law exists. An extension will be applied soon to model more general expressions.<br />
 gw_data: Data products obtained from the following sources <br />
 https://www.gw-openscience.org/O3/O3a/ <br />
 https://zenodo.org/record/5636816#.YaK0M_HP3uU <br />
@@ -26,7 +26,7 @@ results: Files saving posteriors samples and posterior predictives for analysis 
 
 Other Files
 =============================
-script.py: Import data, import analysis in this file. python execution runs the analysis on a dingle CPU. Alternatively, if files are already present in the "temp" folder running script.py will combine those files <br />
+script.py: Import data, import analysis file that you created in the analysis folder. python execution runs the analysis on a dingle CPU. Alternatively, if files are already present in the "temp" folder running script.py will combine those files <br />
 other .py files: Source files <br />
 local_multicpu.py: Execute multiple independent copies of script.py for faster posterior collection (using CPUs on the local machine) <br />
 condor.sub: Submit the analysis on compute nodes using condor (condor_submit condor.sub). 
