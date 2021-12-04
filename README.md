@@ -16,7 +16,7 @@ Numpy, Scipy, Seaborn, h5py
 
 Folder Organisation
 ============================
-analysis: Define your new analysis here and create a new analysis file. Import functions that read data, calculate likelihood, and post-process. Also define the range on priors. Initialise hyper-parameters and define the proposal scheme. Currently only likelihood function that models the merger rate evolution as power-law exists. An extension will be applied soon to model more general expressions.<br />
+analysis: Define your new analysis here by creating a new analysis file. Import functions that read data, calculate likelihood, and post-process. Also define the range on priors. Initialise hyper-parameters and define the proposal scheme. Currently only likelihood function that models the merger rate evolution as power-law exists. An extension will be applied soon to model more general expressions.<br />
 gw_data: Data products obtained from the following sources <br />
 https://www.gw-openscience.org/O3/O3a/ <br />
 https://zenodo.org/record/5636816#.YaK0M_HP3uU <br />
