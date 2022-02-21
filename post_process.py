@@ -161,8 +161,8 @@ def gather_files(outfile, analysis_name, args_sampler, args_ppd, post_files):
         group = out.create_group('ppd')
         for key in ppd.keys():
             group.create_dataset(key, data = ppd[key])
-            
-def get_DiffRate_intervals(pdfs, rates):
+
+def get_DiffRate_intervals(pdfs, rates, intervals):
     """ 
     Combines rate and density measurement to return credible 
     intervals for differnetial rate
@@ -171,13 +171,14 @@ def get_DiffRate_intervals(pdfs, rates):
     ----------
     pdfs: Posterior density
     rate: Merger rate
+    intervals: percentiles in intervals
     """
     
     dRd = rates * np.array(pdfs).T
-    p5 = np.percentile(dRd, 5., axis = 1)
-    p25 = np.percentile(dRd, 25., axis = 1)
-    p50 = np.percentile(dRd, 50., axis = 1)
-    p75 = np.percentile(dRd, 75., axis = 1)
-    p95 = np.percentile(dRd, 95., axis = 1)
+    if np.isscalar(intervals):
+        return np.percentile(dRd, intervals, axis = 1)
+    cred_vals = []
+    for cred in intervals:
+        cred_vals.append(np.percentile(dRd, cred, axis = 1))
     
-    return p5, p25, p50, p75, p95
+    return cred_vals

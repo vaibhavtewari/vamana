@@ -437,3 +437,33 @@ def get_dof(min_nu, max_nu, nsamp):
     in_chidf = interp(np.linspace(min(cdf), 1, nsamp)).astype(int)
     
     return in_chidf
+
+def get_mchirp_logprior(min_mch, max_mch, mch_ax, ngauss, nsamp = 40000):
+    """
+    Get the prior chirp mass distribution for an analysis
+    
+    Parameters
+    ----------
+    min_mch: Minimum chirp mass
+    max_mch: Maximum chirp mass
+    mch_ax: Axis on which to calculate prior's density
+    ngauss: Number of components
+    nsamp: Number of prior density samples
+    
+    Returns
+    -------
+    logprior:Logpdf of prior, nsamp in number
+    """
+    logprior = []
+    fac = 0.15 * np.sqrt(15/ngauss)#hard coded as defined in proposals.py
+    log_minmch, log_maxmch = np.log(min_mch), np.log(max_mch)
+    for ii in range(nsamp):
+        prp_loc = np.exp(np.random.uniform(log_minmch, log_maxmch, ngauss))
+        minstd, maxstd = 0.02 * prp_loc, fac * prp_loc
+        prp_std = np.random.uniform(minstd, maxstd, ngauss)
+        gwts = ss.dirichlet.rvs(alpha = np.ones(ngauss))[0]
+        logpdf = -np.inf
+        for jj in range(ngauss):
+            logpdf = np.logaddexp(logpdf, ss.norm.logpdf(mch_ax, loc = prp_loc[jj], scale = prp_std[jj]) + np.log(gwts[jj]))
+        logprior.append(logpdf)
+    return np.array(logprior)
