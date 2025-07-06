@@ -1,14 +1,14 @@
 This code performs the population analysis of binary black holes using the gravitational 
 wave data. The methodology is described in the following publications <br />
-i) https://arxiv.org/abs/1712.00482 <br />
-ii) https://arxiv.org/abs/2006.15047 <br />
-iii) https://arxiv.org/abs/2012.08839 <br /><br />
+i) https://iopscience.iop.org/article/10.1088/1361-6382/aac89d <br />
+ii) https://iopscience.iop.org/article/10.1088/1361-6382/ac0b54 <br />
 and the scientific results are described in the following publications <br />
-i) https://arxiv.org/abs/2011.04502 <br />
-ii) https://arxiv.org/abs/2111.13991
+i) https://iopscience.iop.org/article/10.3847/2041-8213/abfbe7
+ii) https://iopscience.iop.org/article/10.3847/1538-4357/ac589a
+iii) https://academic.oup.com/mnras/article/527/1/298/7317695
 
 This code is currently not packaged and need to be checked out <br />
-git clone --depth=1 https://github.com/vaibhavtewari/vamana.git
+git clone https://github.com/vaibhavtewari/vamana.git
 
 Additional code requirements
 ============================
@@ -16,17 +16,22 @@ Numpy, Scipy, Seaborn, h5py
 
 Folder Organisation
 ============================
-analysis: Define your new analysis here by creating a new analysis file. In this file, import functions that read data, calculate likelihood, and post-process. Also define the range on priors. Initialise hyper-parameters and define the proposal scheme. Currently only likelihood function that models the merger rate evolution as power-law exists. An extension will be applied soon to model more general expressions.<br />
-gw_data: Data products obtained from the following sources <br />
+analysis: Define your new analysis here. Code contains two examples <br />
+gw_data: Data obtained from the following sources <br />
+https://dcc.ligo.org/LIGO-P2000434/public <br />
 https://www.gw-openscience.org/O3/O3a/ <br />
-https://zenodo.org/record/5636816#.YaK0M_HP3uU <br />
 plots: Folder containing saved figures <br />
 plotting_nb: Notebook to make plots <br />
-results: Files saving posteriors samples and posterior predictives for analysis <br />
+results: Posteriors samples for analysis <br />
+submit: Scripts to run independent copies of code for faster posterior collection 
 
 Other Files
 =============================
-script.py: Import data, import analysis file that you created in the analysis folder. python execution runs the analysis on a single CPU. Alternatively, if files are already present in the "temp" folder running script.py will combine those files <br />
-other .py files: Source files <br />
-local_multicpu.py: Execute multiple independent copies of script.py for faster posterior collection (using CPUs on the local machine) <br />
-condor.sub: Submit the analysis on compute nodes using condor (condor_submit condor.sub). 
+debug.ipynb: Notebook to test an analysis <br />
+.py: Source files
+
+To Submit
+=============================
+debug.ipynb can run a single thread run <br />
+For multiple threads do: python submit/relevant analysis(2 submit files are provided) <br />
+If files are already present in the "temp" folder instead of running the analysis code will combine these!

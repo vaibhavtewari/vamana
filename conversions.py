@@ -107,3 +107,14 @@ def J_mchq_to_m1m2(mchirp, q):
     J = mchirp / mass1 ** 2
     
     return J
+
+def J_m1m2_to_Mq(m1, m2):
+    '''
+    Get Jacobian to transfrom from m1, m2 -> M, q
+    ''' 
+    
+    q = m2 / m1
+    M = m1 + m2
+    J = M / (1 + q) ** 2
+    
+    return J

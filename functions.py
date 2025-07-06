@@ -12,12 +12,103 @@ import gnobs
 from models import *
 from conversions import *
 
-def get_mchirp_spinz_params(locs_mch, stds_mch, locs_sz, stds_sz):
+def get_zsegs(pe, nsegs):
     """
-    Organise 1D Gaussians in a mixture componnet in a 3D Gaussian with no
-        covariance - for faster computation
-    locs_mch: Location of Gaussians modeling chirp mass
-    stds_mch: Scale of Gaussians modeling chirp mass
+    Estimate approximate segments in redshift that have contributed equally
+        to the number of observations
+    pe: Parameter estimates of all the runs
+    nsegs: Number of segments
+    Returns
+    -------
+    zsegs: The redshift segments
+    zseg_filled: list detailing which of these segments are filled by each
+        observation
+    """
+    
+    zax = np.linspace(0, 2.0, 1000)
+    c_zax = 0.5 * (zax[:-1] + zax[1:])
+    hist = 0
+    for obsrun in pe.keys():
+        for obs in pe[obsrun].keys():
+            prior_pdf = pe[obsrun][obs]['prior_pdf']
+            z = pe[obsrun][obs]['redshift']
+            mch = pe[obsrun][obs]['mchirp_src']
+            #Re-weight to an approximate population -- not much bearing
+            pout = gnobs.get_sfr_pdf(sfr_1pz, z, \
+                                     kappa = 2.5, z_max = np.max(z))
+            pout *= powerlaw_pdf(mch, 5., 60., 3.0)
+            h, _ = np.histogram(z, weights = pout/prior_pdf, \
+                                density = True, bins = zax)
+            hist += h
+    hist = np.cumsum(hist)
+    hist /= hist[-1]
+    zsegs = [0]
+    for ii in range(1, nsegs):
+        zax_segmax = c_zax[hist <= ii/nsegs][-1]
+        zsegs.append(zax_segmax)
+    zsegs.append(zax[-1])
+    
+    zseg_filled = {}
+    for obsrun in pe.keys():
+        zseg_filled[obsrun] = []
+        for obs in list(pe[obsrun].keys()):
+            zsegfill = np.array([]).astype(int)
+            z = pe[obsrun][obs]['redshift']
+            w = 1 / pe[obsrun][obs]['lumd']
+            sumw = np.sum(w)
+            for ii in range(len(zsegs) - 1):
+                idx = np.where((z >= zsegs[ii]) & (z < zsegs[ii+1]))
+                if len(w[idx]) > 0:
+                    zsegfill = np.append(zsegfill, ii)
+                
+            zseg_filled[obsrun].append(zsegfill)
+    
+    return zsegs, zseg_filled
+
+def get_zsegs_idx(pe, injections, zsegs):
+    """
+    Identify the indexes of the posterior sample or injection as belonging
+        to a redshift segment
+    pe: Parameter estimates of all the runs
+    injections: Injections for all the runs
+    zsegs: The redshift segments
+    Returns
+    -------
+    zseg_peidx: Array that stores index for measured redshift for observations
+    zseg_injidx: Array that stores index for injected redshift for 
+        injections
+    """
+    zseg_peidx = {}
+    for obsrun in pe.keys():
+        zsegpeidx = []
+        for obs in list(pe[obsrun].keys()):
+            idxx = []
+            for ii in range(len(zsegs) - 1):
+                z = pe[obsrun][obs]['redshift']
+                idx = np.where((z >= zsegs[ii]) & (z <= zsegs[ii + 1]))
+                idxx.append(idx)
+            zsegpeidx.append(idxx)
+            
+        zseg_peidx[obsrun] = zsegpeidx
+            
+    zseg_injidx = {}
+    for obsrun in injections.keys():
+        z = injections[obsrun]['z_rec']
+        zseg_injidx[obsrun] = []
+        for ii in range(len(zsegs) - 1):
+            idx = np.where((z >= zsegs[ii]) & (z < zsegs[ii + 1]))
+            zseg_injidx[obsrun].append(idx)
+            
+    return zseg_peidx, zseg_injidx
+
+def get_m1m2_spinz_params(locs_m1, stds_m1, locs_m2, stds_m2, corr_m1m2, locs_sz, stds_sz):
+    """
+    Organise 1D Gaussians in a mixture componet in a 3D Gaussian
+    locs_m1: Location of Gaussians modeling primary mass
+    stds_m1: Scale of Gaussians modeling primary mass
+    locs_m2: Location of Gaussians modeling Secondary mass
+    stds_m2: Scale of Gaussians modeling Secondary mass
+    corr_m1m2: correlation factor between two mass parameter
     locs_sz: Location of Gaussians modeling aligned spins
     stds_sz: Scale of Gaussians modeling aligned spins
     Returns
@@ -25,10 +116,12 @@ def get_mchirp_spinz_params(locs_mch, stds_mch, locs_sz, stds_sz):
     3D arrays for each component
     """
     
-    ngauss, means, covs = len(locs_mch), [], []
+    ngauss, means, covs = len(locs_m1), [], []
     for ii in range(ngauss):
-        mean = np.array([locs_mch[ii], locs_sz[ii], locs_sz[ii]])
-        cov = np.array([stds_mch[ii] ** 2, stds_sz[ii] ** 2, stds_sz[ii] ** 2])
+        mean = np.array([locs_m1[ii], locs_m2[ii], locs_sz[ii], locs_sz[ii]])
+        cov = np.diag([stds_m1[ii] ** 2, stds_m2[ii] ** 2, stds_sz[ii] ** 2, stds_sz[ii] ** 2])
+        
+        cov[0][1] = cov[1][0] = stds_m1[ii] * stds_m2[ii] * corr_m1m2[ii]
         
         means.append(mean)
         covs.append(cov)
@@ -76,6 +169,7 @@ def function_gauss(data_analysis):
         rndn = np.random.random()
         if ratio > rndn:
 
+            stp += 1
             log_lkl = logsum_sumprob
             maxlkl = max(maxlkl, log_lkl)
             avg_log_lkl = sum_log_lkl - np.log(nsampled_eff)
@@ -83,24 +177,23 @@ def function_gauss(data_analysis):
             sum_log_lkl, nsampled_eff = -1e8, 0.
             
             hyperparams = prp_hyperparams
-            #locs_mch, stds_mch = hyperparams['locs_mch'], hyperparams['stds_mch']
+            locs_m1, locs_m2 = hyperparams['locs_m1'], hyperparams['locs_m2']
+            corr_m1m2 = hyperparams['corr_m1m2']
             #locs_sz, stds_sz = hyperparams['locs_sz'], hyperparams['stds_sz']
-            #min_q, alphas_q = hyperparams['min_q'], hyperparams['alphas_q']
-            #gwts = hyperparams['gwts']
+            gwts = hyperparams['gwts']
             rate = hyperparams['rate']
             hyperparams['log_lkl'] = logsum_sumprob
-            #print (itr, stp, np.round(log_lkl, 1), np.round(maxlkl, 2), np.round(rate, 2))
-            #print (np.round(hyperparams['kappa'], 2).flatten())
-            #print (np.round(locs_mch, 2), '--locs_mch')
-            #print (np.round(stds_mch, 2), '--stds_mch')
-            #print (np.round(min_q, 3), '--minq')
-            #print (np.round(alphas_q, 2), '--alpha_q')
+            print (itr, stp, np.round(log_lkl, 1), np.round(maxlkl, 2), np.round(rate, 2), np.round(hyperparams['kappa'], 2))
+            print (np.round(hyperparams['norm_m1m2'], 2))
+            print (np.round(locs_m1, 2), '--locs_m1')
+            print (np.round(locs_m2, 2), '--locs_m2')
+            #print (np.round(corr_m1m2, 2), '--corr_m1m2')
             #print (np.round(locs_sz, 2), '--sz loc')
             #print (np.round(stds_sz, 2), '--sz std')
-            #print (np.round(gwts, 4))
+            #print (np.round(gwts, 3))
             #print ()
             
-            if stp >= args_ppd['nstart'] and stp % args_ppd['nstride'] == 0:
+            if stp > args_ppd['nstart'] and stp % args_ppd['nstride'] == 0:
                 
                 hyperparams['margl'] = logsumexp(margl[-args_ppd['nstride']:])
                 hyperparams['margl'] -= np.log(args_ppd['nstride'])
@@ -125,7 +218,6 @@ def function_gauss(data_analysis):
                             group.create_dataset(key, data = ppd[key], dtype='float32')
                         else:
                             group.create_dataset(key, data = ppd[key])
-            stp += 1
 
     return True
 
@@ -301,17 +393,14 @@ def read_injections_o3(fin, IFAR_THR):
         ps1z = (np.log(max_spin1) - np.log(np.abs(s1z_rec))) / 2 / max_spin1
         ps2z = (np.log(max_spin1) - np.log(np.abs(s2z_rec))) / 2 / max_spin1
         rec_pdf = pm1m2 * pz * ps1z * ps2z
-
-        rec_pdf *= J_m1m2_to_mchq(m1_rec, m2_rec)
         
-        mch_rec, q_rec = m1m2_to_mchq(m1_rec, m2_rec)
-        injections['mch_rec'] = mch_rec
+        injections['mass1_rec'] = m1_rec
+        injections['mass2_rec'] = m2_rec
         injections['s1z_rec'] = s1z_rec
         injections['s2z_rec'] = s2z_rec
-        injections['q_rec'] = q_rec
-        injections['logq_rec'] = np.log(q_rec)
         injections['z_rec'] = z_rec
         injections['rec_pdf'] = rec_pdf
+        injections['w_rec'] = np.ones_like(rec_pdf)
         
     return injections
 
@@ -341,14 +430,16 @@ def read_injections_o1o2(fin):
         s2z_rec = inp['injections']['s2z_rec'][()]
         z_rec = inp['injections']['z_rec'][()]
         rec_pdf = inp['injections']['rec_pdf'][()]
+        rec_pdf *= J_mchq_to_m1m2(mch_rec, q_rec)
 
-        injections['mch_rec'] = mch_rec
+        m1_rec, m2_rec = qmch_to_m1m2(mch_rec, q_rec)
+        injections['mass1_rec'] = m1_rec
+        injections['mass2_rec'] = m2_rec
         injections['s1z_rec'] = s1z_rec
         injections['s2z_rec'] = s2z_rec
-        injections['q_rec'] = q_rec
-        injections['logq_rec'] = np.log(q_rec)
         injections['z_rec'] = z_rec
         injections['rec_pdf'] = rec_pdf
+        injections['w_rec'] = np.ones_like(rec_pdf)
         
     return injections
 
@@ -394,17 +485,14 @@ def read_injections_o1o2_rnp(fin, DETSNR_THR, NETSNR_THR):
         ps1z = (np.log(max_spin) - np.log(np.abs(s1z_rec))) / 2 / max_spin
         ps2z = (np.log(max_spin) - np.log(np.abs(s2z_rec))) / 2 / max_spin
         rec_pdf = np.exp(pm1 + pm2 + pz) * ps1z * ps2z
-        rec_pdf *= J_m1m2_to_mchq(m1_rec, m2_rec)
         
-        mch_rec, q_rec = m1m2_to_mchq(m1_rec, m2_rec)
-        injections['mch_rec'] = mch_rec
+        injections['mass1_rec'] = m1_rec
+        injections['mass2_rec'] = m2_rec
         injections['s1z_rec'] = s1z_rec
         injections['s2z_rec'] = s2z_rec
-        injections['q_rec'] = q_rec
-        injections['logq_rec'] = np.log(q_rec)
         injections['z_rec'] = z_rec
         injections['rec_pdf'] = rec_pdf
-        injections['z_max'] = np.max(z_rec)
+        injections['w_rec'] = np.ones_like(rec_pdf)
         
     return injections
 

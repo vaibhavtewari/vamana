@@ -1,5 +1,5 @@
 universe = vanilla
-executable = #Path to python executable
+executable = /cvmfs/oasis.opensciencegrid.org/ligo/sw/conda/envs/igwn-py39/bin/python
 arguments = script.py $(Process)
 
 output = logs/script.$(Process).out
@@ -8,8 +8,12 @@ log = logs/script.$(Process).log
 
 should_transfer_files = YES
 transfer_executable = False
-transfer_input_files = analysis, gw_data, analysis_data.py, conversions.py, script.py, functions.py, gnobs.py, likelihoods_vts_smoothing.py, models.py, post_process.py, proposals.py, read_pe_samples.py
+transfer_input_files = analysis, gw_data, analysis_data.py, conversions.py, script.py, functions.py, gnobs.py, likelihoods_vts_smoothing.py, models.py, post_process.py, proposals.py, read_pe_samples.py, read_pe_samples_o4.py, read_data.py
 transfer_output_files = temp
 when_to_transfer_output = ON_EXIT_OR_EVICT
 
-queue 25
+request_disk = 4 GB
+request_memory = 4 GB
+rank = Memory
+
+queue 100

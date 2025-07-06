@@ -275,6 +275,11 @@ def powerlaw_pdf(x, minx, maxx, alpha):
     C = (-alpha + 1.0) / (maxx ** (-alpha + 1.0) - minx ** (-alpha + 1.0))
     
     pdf = C * x ** (-alpha)
+    if np.isscalar(pdf):
+        if x < minx or x > maxx:
+            return 0
+        else:
+            return pdf
     pdf[(x < minx) | (x > maxx)] = 0
     
     return pdf
@@ -402,24 +407,25 @@ def bound_range(x, minx, maxx, p =  5):
     
     return bound
 
-def core_pdf(x, mean, diag_cov, logpdfq, gwts):
-    multivarnorm_logpdf = multivariate_normal_logpdf(x, mean, diag_cov)
-    logpdf = multivarnorm_logpdf + logpdfq + np.log(gwts)
-    return np.exp(logpdf)
-
-def core_logpdf(x, mean, diag_cov, logpdfq, gwts):
-    multivarnorm_logpdf = multivariate_normal_logpdf(x, mean, diag_cov)
-    logpdf = multivarnorm_logpdf + logpdfq + np.log(gwts)
+def core_logpdf(x, mean, cov, gwts):
+    multivarnorm_logpdf = multivariate_normal_logpdf(x, mean, cov)
+    logpdf = multivarnorm_logpdf + np.log(gwts)
     return logpdf
 
-def multivariate_normal_logpdf(x, mean, diag_cov):
-    logdet     = np.sum(np.log(diag_cov))
-    U          = np.sqrt(1./diag_cov)
-    rank       = len(mean)
+def multivariate_normal_logpdf(x, mean, cov):
+    # https://gregorygundersen.com/blog/2019/10/30/scipy-multivariate/
+    # `eigh` assumes the matrix is Hermitian.
+    vals, vecs = np.linalg.eigh(cov)
+    logdet     = np.sum(np.log(vals))
+    valsinv    = 1 / vals
+    # `vecs` is R times D while `vals` is a R-vector where R is the matrix 
+    # rank. The asterisk performs element-wise multiplication.
+    U          = vecs * np.sqrt(valsinv)
+    rank       = len(vals)
     dev        = x - mean
-    maha       = np.square(U * dev).sum(axis = 1)
+    # "maha" for "Mahalanobis distance".
+    maha       = np.square(np.dot(dev, U)).sum(axis = 1)
     log2pi     = np.log(2 * np.pi)
-    
     return -0.5 * (rank * log2pi + maha + logdet)
 
 def truncnorm_pdf(x, idxnonzero, ll, rl, loc, scale):

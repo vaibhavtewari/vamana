@@ -3,7 +3,7 @@ import numpy as np
 
 from conversions import *
 
-def read_pesamples(pe_dir, ifar_thr, nsel = 25000):
+def read_pesamples(pe_dir, ifar_thr, nsel):
 
     pe_files = np.sort(glob.glob(pe_dir))
     pe, i = {}, 0
@@ -55,42 +55,30 @@ def read_pesamples(pe_dir, ifar_thr, nsel = 25000):
                 except:
                     pass
             prior_pdf = get_pe_weights(pe[super_event]['mass1_src'], pe[super_event]['mass2_src'],\
-                 pe[super_event]['spin1z'], pe[super_event]['spin2z'], pe[super_event]['lumd'], 'precessing')
-            mchirp_src, q = m1m2_to_mchq(pe[super_event]['mass1_src'], pe[super_event]['mass2_src'])
-            pe[super_event]['mchirp_src'] = mchirp_src
-            pe[super_event]['q'] = q
+                 pe[super_event]['spin1z'], pe[super_event]['spin2z'], pe[super_event]['lumd'])
             pe[super_event]['prior_pdf'] = prior_pdf
             pe[super_event]['redshift'] = dlum_to_z(pe[super_event]['lumd'])
             
-            idxsel = np.arange(nsel)
-            np.random.shuffle(idxsel)
+            npe = len(prior_pdf)
+            idxsel = np.random.choice(np.arange(npe), size = nsel, replace=False)
             for key in pe[super_event].keys():
                 pe[super_event][key] = pe[super_event][key][idxsel]
-
     
     return pe
 
-def get_pe_weights(mass1, mass2,  spin1z, spin2z, lumd, orientation):
+def get_pe_weights(mass1, mass2,  spin1z, spin2z, lumd):
     
     z = dlum_to_z(lumd)
     # Lalinference is uniform in masses and follows uniform in s or s_z in spins
     #Spins
-    if orientation == 'precessing':
-        ps1z = - np.log(np.abs(spin1z)) / 2
-        ps2z = - np.log(np.abs(spin2z)) / 2
-    else:
-        ps1z = 1 / 2.
-        ps2z = 1 / 2.
+    ps1z = - np.log(np.abs(spin1z)) / 2
+    ps2z = - np.log(np.abs(spin2z)) / 2
     prior_pdf = ps1z * ps2z
     
     #Change from detector to source frame
     psrc = lumd ** 2 #uniform in L from uniform in V
-    psrc *= (1 + z) #det mchirp to src
+    psrc *= (1 + z) ** 2#det mchirp to src
     psrc *= get_dLdz(z) #L to z
     prior_pdf *= psrc
-    
-    #change from m1-m2 to mch-q in source frame
-    J = J_m1m2_to_mchq(mass1, mass2)
-    prior_pdf *= J
      
     return prior_pdf
