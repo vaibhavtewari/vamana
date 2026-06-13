@@ -1,0 +1,14 @@
+# NAME                      DEFINITION                       DISTRIBUTION                    Per_component   arg1   arg2    Proposal function    pargs
+weights                     weights_of_components            dirichlet                       True            0.0    1.0     dirichlet_joint
+mu_m1                       location_for_m1                  m1_for_uniform_m1m2             True            6.0    75.0    mass_powerlaw_joint  -1.1
+mu_m2                       location_for_m2                  uniform_min_m2_to_m1            True            6.0    None    mass_powerlaw_joint  -1.1
+min_mu_m1_over_mu_m2        smallest_mass_ratio              fixed                           False           0.2   None
+sigma_over_mu_m1_pow_beta   sigma,mu**beta_proportionality   uniform                         True            0.049  0.147   mass_powerlaw_joint
+sigma_over_mu_m2_pow_beta   sigma,mu**beta_proportionality   uniform                         True            0.049  0.147   mass_powerlaw_joint
+beta                        see_last_line                    fixed                           False           1.0    None
+rho_m1m2                    correlation_between_m1_and_m2    uniform                         True           -0.75   0.75
+mu_sz                       location_for_aligned_spin        piecewise_uniform_logarithmic   True            0.5    0.9     spin_joint
+sigma_sz                    scale_for_aligned_spin           uniform                         True            0.13   0.411   spin_joint
+kpop                        global_rate_evolution            piecewise_uniform_logarithmic   False           1.0    5.0
+kcomp                       per_component_rate_evolution     uniform_kcomp                   True            1.5    None
+rate                        pop_averaged_merger_rate         uniform_in_log                  False           1.0    100.0

@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vamana"
+version = "2.0.0"
+description = "Bayesian mixture model population inference for gravitational wave observations"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Vaibhav Tiwari", email = "vaibhav.tiwari@ligo.org"}
+]
+keywords = [
+    "gravitational waves",
+    "population inference",
+    "Bayesian",
+    "MCMC",
+    "black holes",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.21",
+    "scipy>=1.7",
+    "astropy>=5.0",
+    "h5py>=3.0",
+]
+
+[project.optional-dependencies]
+nested = ["dynesty>=2.0"]
+dev = [
+    "pytest",
+    "matplotlib",
+    "jupyter",
+]
+
+[project.urls]
+Homepage = "https://github.com/vaibhavtewari/vamana"
+Repository = "https://github.com/vaibhavtewari/vamana"
+"Bug Tracker" = "https://github.com/vaibhavtewari/vamana/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+vamana = ["priors/*.prior"]

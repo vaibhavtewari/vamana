@@ -1,0 +1,9 @@
+src/*.egg-info/
+dist/
+build/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+.ipynb_checkpoints/
+temp/
+*.h5
