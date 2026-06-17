@@ -16,6 +16,7 @@ Scientific results obtained using Vamana are presented in:
 - Tiwari, V. (2023). *What's in a binary black hole's mass parameter?* MNRAS, 527(1), 298. [doi:10.1093/mnras/stad3155](https://doi.org/10.1093/mnras/stad3155)
 - Tiwari, V. (2025). *Examining the gap in the chirp mass distribution of binary black holes.* ApJ, 995, 177. [doi:10.3847/1538-4357/ae2260](https://doi.org/10.3847/1538-4357/ae2260)
 - Tiwari, V. (2025). *Population of binary black holes inferred from one hundred and fifty gravitational wave signals.* arXiv:2510.25579.
+- Tiwari, V. (2026). *The Chirp-Mass Ladder: A New Rung Emerges.* arXiv:2606.18081.
 
 ## Installation
 
